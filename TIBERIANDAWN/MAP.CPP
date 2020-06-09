@@ -948,8 +948,8 @@ void MapClass::Logic(void)
 	TiberiumScan = index;
 
 	if (TiberiumScan >= MAP_CELL_TOTAL) {
-		int tries = 1;
-		if (Special.IsTFast || GameToPlay != GAME_NORMAL) tries = 2;
+		int tries = 4;
+		if (Special.IsTFast || GameToPlay != GAME_NORMAL) tries = 8;
 		TiberiumScan = 0;
 		IsForwardScan = (IsForwardScan == false);
 

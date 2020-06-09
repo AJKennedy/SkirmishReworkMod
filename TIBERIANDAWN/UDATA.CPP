@@ -677,7 +677,7 @@ static UnitTypeClass const UnitHarvester(
 	WEAPON_NONE,WEAPON_NONE,
 	ARMOR_ALUMINUM,						// ARMOR:		Armor type
 	SPEED_WHEEL,							// MOVE:			Locomotion type.
-	MPH_MEDIUM_SLOW,						// SPEED:		Miles per hour.
+	MPH_MEDIUM,						// SPEED:		Miles per hour.
 	5,											// ROT:			Rate of turn (degrees per tick).
 	0,							// Turret center offset along body centerline.
 	MISSION_HARVEST						// ORDERS:		Default order to give new unit.
