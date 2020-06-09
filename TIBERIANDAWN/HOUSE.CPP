@@ -6376,29 +6376,63 @@ int HouseClass::AI_Building(void)
 			}
 		}
 
+		int defenseScale = 1;
+		double defMaxScale = 1;
+
+		switch (PlayerPtr->Difficulty) {
+			case DIFF_EASY:	
+				defenseScale = 1;
+				break;
+			case DIFF_NORMAL:
+				defenseScale = 2;
+				break;
+			case DIFF_HARD:
+				defenseScale = 4;
+				defMaxScale = 1.5;
+				break;
+		}
+
 		/*
 		**	Always build up some base defense.
 		*/
 		//current = BQuantity[STRUCT_PILLBOX] + BQuantity[STRUCT_CAMOPILLBOX] + BQuantity[STRUCT_TURRET] + BQuantity[STRUCT_FLAME_TURRET];
-		current = BQuantity[STRUCT_TURRET] + BQuantity[STRUCT_OBELISK];
-		if (current < Round_Up(Rule.DefenseRatio*fixed(CurBuildings)) && current < (unsigned)Rule.DefenseLimit) {
+		current = BQuantity[STRUCT_TURRET] + BQuantity[STRUCT_OBELISK] + BQuantity[STRUCT_GTOWER] + BQuantity[STRUCT_ATOWER];
+		if (current < Round_Up(Rule.DefenseRatio*fixed(CurBuildings) * defenseScale) && current <= (unsigned)Rule.DefenseLimit * defMaxScale) {
 			//b = &BuildingTypeClass::As_Reference(STRUCT_FLAME_TURRET);
 			b = &BuildingTypeClass::As_Reference(STRUCT_OBELISK);
+			
 			if (Can_Build(b, ActLike) && (b->Cost_Of() < money || hasincome)) {
 				choiceptr = BuildChoice.Alloc();
 				if (choiceptr != NULL) {
 					*choiceptr = BuildChoiceClass(URGENCY_MEDIUM, b->Type);
 				}
-			} else {
-				//if (Percent_Chance(50)) {
-					//b = &BuildingTypeClass::As_Reference(STRUCT_PILLBOX);
-					b = &BuildingTypeClass::As_Reference(STRUCT_TURRET);
+			} 
+			else {
+				b = &BuildingTypeClass::As_Reference(STRUCT_ATOWER);
+				if (Can_Build(b, ActLike) && (b->Cost_Of() < money || hasincome)) {
+					choiceptr = BuildChoice.Alloc();
+					if (choiceptr != NULL) {
+						*choiceptr = BuildChoiceClass(URGENCY_MEDIUM, b->Type);
+					}
+				}
+				else {
+					b = &BuildingTypeClass::As_Reference(STRUCT_GTOWER);
 					if (Can_Build(b, ActLike) && (b->Cost_Of() < money || hasincome)) {
 						choiceptr = BuildChoice.Alloc();
 						if (choiceptr != NULL) {
 							*choiceptr = BuildChoiceClass(URGENCY_MEDIUM, b->Type);
 						}
 					}
+					else {
+						b = &BuildingTypeClass::As_Reference(STRUCT_TURRET);
+						if (Can_Build(b, ActLike) && (b->Cost_Of() < money || hasincome)) {
+							choiceptr = BuildChoice.Alloc();
+							if (choiceptr != NULL) {
+								*choiceptr = BuildChoiceClass(URGENCY_MEDIUM, b->Type);
+							}
+						}
+					}
+				}
 #if (0)
 				} else {
 					b = &BuildingTypeClass::As_Reference(STRUCT_TURRET);

@@ -1,3 +1,8 @@
+# Acknowledgements
+This code was created using the repository setup by alexlk42 to load the source files in Visual Studio. Additionally, solution for allowing building tiles to be more than 1 apart was shared by FluffyQuack
+
+
+
 # CnC_Remastered_Collection
 
 This code is the game logic for Command and Conquer: Tiberian Dawn, and Command and Conquer: Red Alert. EA did not open source any assets beyond this source and only this source is under GPLv3. In order to obtain the rest of the game you must purchase from Steam or Origin. Once you have purchased the game you can play it and mod it to your heart's content.
