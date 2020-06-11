@@ -4362,6 +4362,9 @@ void DLLExportClass::Calculate_Placement_Distances(BuildingTypeClass* placement_
 					{
 						for (FacingType newfacing = FACING_N; newfacing < FACING_COUNT; newfacing++) {
 							CELL newadjcell = Adjacent_Cell(adjcell, newfacing);
+							//Out of bounds check
+							if (newadjcell < 0 || newadjcell >= MAP_CELL_TOTAL)
+								continue;
 							if (Map.In_Radar(newadjcell)) {
 								placement_distance[newadjcell] = min(placement_distance[newadjcell], 1U);
 							}
