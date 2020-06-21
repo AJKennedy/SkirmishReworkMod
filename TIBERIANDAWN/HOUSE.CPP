@@ -1701,10 +1701,22 @@ void HouseClass::Harvested(unsigned tiberium)
 {
 	Validate();
 	long oldtib = Tiberium;
+	double tibScale = 1.0;
 
-	Tiberium += tiberium;
-	if (Tiberium > Capacity) {
-		Tiberium = Capacity;
+	switch (PlayerPtr->Difficulty) {
+		case DIFF_EASY:
+			break;
+		case DIFF_NORMAL:
+			tibScale = 1.5;
+			break;
+		case DIFF_HARD:
+			tibScale = 2.0;
+			break;
+		}
+
+	Tiberium += (tiberium * tibScale);
+	if (Tiberium > (Capacity * tibScale)) {
+		Tiberium = Capacity * tibScale;
 		IsMaxedOut = true;
 	}
 	HarvestedCredits += tiberium;
@@ -5488,14 +5500,14 @@ int HouseClass::Expert_AI(void)
 			case DIFF_EASY:
 				break;
 			case DIFF_NORMAL:
-				unit_scale *= 2;
-				building_scale *= 2;
-				inf_scale *= 2;
-				break;
-			case DIFF_HARD:
 				unit_scale *= 4;
 				building_scale *= 4;
 				inf_scale *= 4;
+				break;
+			case DIFF_HARD:
+				unit_scale *= 10;
+				building_scale *= 5;
+				inf_scale *= 10;
 				break;
 			}
 
