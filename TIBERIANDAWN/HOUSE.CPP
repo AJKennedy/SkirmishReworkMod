@@ -1703,16 +1703,19 @@ void HouseClass::Harvested(unsigned tiberium)
 	long oldtib = Tiberium;
 	double tibScale = 1.0;
 
-	switch (PlayerPtr->Difficulty) {
-		case DIFF_EASY:
-			break;
-		case DIFF_NORMAL:
-			tibScale = 1.5;
-			break;
-		case DIFF_HARD:
-			tibScale = 2.0;
-			break;
-		}
+	if (!IsHuman)
+	{
+		switch (PlayerPtr->Difficulty) {
+			case DIFF_EASY:
+				break;
+			case DIFF_NORMAL:
+				tibScale = 1.5;
+				break;
+			case DIFF_HARD:
+				tibScale = 2.3;
+				break;
+			}
+	}
 
 	Tiberium += (tiberium * tibScale);
 	if (Tiberium > (Capacity * tibScale)) {
@@ -5505,9 +5508,9 @@ int HouseClass::Expert_AI(void)
 				inf_scale *= 4;
 				break;
 			case DIFF_HARD:
-				unit_scale *= 10;
-				building_scale *= 5;
-				inf_scale *= 10;
+				unit_scale *= 12;
+				building_scale *=6;
+				inf_scale *= 7;
 				break;
 			}
 
@@ -5823,7 +5826,7 @@ UrgencyType HouseClass::Check_Lower_Power(void) const
 {
 	//assert(Houses.ID(this) == ID);
 
-	if (Power > Drain+300) {
+	if (Power > Drain+600) {
 		return(URGENCY_LOW);
 	}
 	return(URGENCY_NONE);
@@ -6317,14 +6320,14 @@ int HouseClass::AI_Building(void)
 		**	money available.
 		*/
 		b = &BuildingTypeClass::As_Reference(STRUCT_ADVANCED_POWER);
-		if (Can_Build(b, ActLike) && Power <= Drain+Rule.PowerSurplus && b->Cost_Of() < money) {
+		if (Can_Build(b, ActLike) && Power < Drain+Rule.PowerSurplus && (b->Cost_Of() < money) || hasincome) {
 			choiceptr = BuildChoice.Alloc();
 			if (choiceptr != NULL) {
 				*choiceptr = BuildChoiceClass(BQuantity[STRUCT_REFINERY] == 0 ? URGENCY_LOW : Power < -Drain ? URGENCY_CRITICAL : URGENCY_MEDIUM, b->Type);
 			}
 		} else {
 			b = &BuildingTypeClass::As_Reference(STRUCT_POWER);
-			if (Can_Build(b, ActLike) && Power <= Drain+Rule.PowerSurplus && b->Cost_Of() < money) {
+			if (Can_Build(b, ActLike) && Power < Drain+Rule.PowerSurplus && (b->Cost_Of() < money) || hasincome) {
 				choiceptr = BuildChoice.Alloc();
 				if (choiceptr != NULL) {
 					*choiceptr = BuildChoiceClass(BQuantity[STRUCT_REFINERY] == 0 ? URGENCY_LOW : Power < -Drain  ? URGENCY_HIGH : URGENCY_MEDIUM, b->Type);
@@ -6340,8 +6343,17 @@ int HouseClass::AI_Building(void)
 			b = &BuildingTypeClass::As_Reference(STRUCT_REFINERY);
 			if (Can_Build(b, ActLike) && (money > b->Cost_Of() || hasincome)) {
 				choiceptr = BuildChoice.Alloc();
+				UrgencyType urgency = URGENCY_MEDIUM;
+				if (BQuantity[STRUCT_REFINERY] == 0 || BQuantity[STRUCT_REFINERY] == 1 && (BQuantity[STRUCT_WEAP] >= 1 || BQuantity[STRUCT_AIRSTRIP] >= 1) &&
+					(BQuantity[STRUCT_HAND] >= 1 || BQuantity[STRUCT_BARRACKS] >= 1)) {
+					urgency = URGENCY_HIGH;
+				}
+				else if (BQuantity[STRUCT_REFINERY] >= 3) {
+					urgency = URGENCY_LOW;
+				}
+
 				if (choiceptr != NULL) {
-					*choiceptr = BuildChoiceClass(BQuantity[STRUCT_REFINERY] == 0 ? URGENCY_HIGH : BQuantity[STRUCT_REFINERY] < 3 ? URGENCY_MEDIUM : URGENCY_LOW, b->Type);
+					*choiceptr = BuildChoiceClass(urgency, b->Type);
 				}
 			}
 		}
@@ -6444,6 +6456,7 @@ int HouseClass::AI_Building(void)
 		double defMaxScale = 1;
 		unsigned int crit_low_defense = 2;
 		unsigned int low_defense = 3;
+		unsigned int low_adv_defense = 3;
 		unsigned int high_defense = 5;
 		UrgencyType def_urgence = URGENCY_MEDIUM;
 
@@ -6459,6 +6472,7 @@ int HouseClass::AI_Building(void)
 			case DIFF_HARD:
 				defenseScale = 4;
 				defMaxScale = 1.5;
+				high_defense = 7;
 				break;
 		}		
 
@@ -6467,21 +6481,21 @@ int HouseClass::AI_Building(void)
 		*/
 		//current = BQuantity[STRUCT_PILLBOX] + BQuantity[STRUCT_CAMOPILLBOX] + BQuantity[STRUCT_TURRET] + BQuantity[STRUCT_FLAME_TURRET];
 		current = BQuantity[STRUCT_TURRET] + BQuantity[STRUCT_OBELISK] + BQuantity[STRUCT_GTOWER] + BQuantity[STRUCT_ATOWER];
+		unsigned int adv_current = BQuantity[STRUCT_OBELISK] + BQuantity[STRUCT_ATOWER];
 
 		if (current < crit_low_defense) {
-			UrgencyType def_urgence = URGENCY_CRITICAL;
+			def_urgence = URGENCY_CRITICAL;
 		}
 		else if (current <= low_defense) {
-			UrgencyType def_urgence = URGENCY_HIGH;
+			def_urgence = URGENCY_HIGH;
 		}
 		else if (current > high_defense) {
-			UrgencyType def_urgence = URGENCY_LOW;
-	
+			def_urgence = URGENCY_LOW;
 		}
 
 
 		if (current < Round_Up(Rule.DefenseRatio * fixed(CurBuildings) * defenseScale) && current <= (unsigned)Rule.DefenseLimit * defMaxScale) {
-			int defensive_choice = Random_Pick(0, 2);
+			int defensive_choice = Random_Pick(0, 3);
 			BuildingTypeClass const* c = NULL;
 
 			b = &BuildingTypeClass::As_Reference(STRUCT_GTOWER);
@@ -6489,6 +6503,10 @@ int HouseClass::AI_Building(void)
 				c = &BuildingTypeClass::As_Reference(STRUCT_ATOWER);
 				if (defensive_choice >= 1 && Can_Build(c, ActLike) && (c->Cost_Of() < money || hasincome)) {
 					choiceptr = BuildChoice.Alloc();
+					if (adv_current <= low_adv_defense) {
+						def_urgence = URGENCY_HIGH;
+					}
+
 					if (choiceptr != NULL) {
 						*choiceptr = BuildChoiceClass(def_urgence, c->Type);
 					}
@@ -6506,6 +6524,9 @@ int HouseClass::AI_Building(void)
 					c = &BuildingTypeClass::As_Reference(STRUCT_OBELISK);
 					if (defensive_choice >= 1 && Can_Build(c, ActLike) && (c->Cost_Of() < money || hasincome)) {
 						choiceptr = BuildChoice.Alloc();
+						if (adv_current <= low_adv_defense) {
+							def_urgence = URGENCY_HIGH;
+						}
 						if (choiceptr != NULL) {
 							*choiceptr = BuildChoiceClass(def_urgence, c->Type);
 						}
@@ -6528,6 +6549,28 @@ int HouseClass::AI_Building(void)
 				choiceptr = BuildChoice.Alloc();
 				if (choiceptr != NULL) {
 					*choiceptr = BuildChoiceClass(URGENCY_MEDIUM, b->Type);
+				}
+			}
+		}
+
+		// Build Advanced Structures for launchers
+		if (BQuantity[STRUCT_EYE] == 0) {
+			b = &BuildingTypeClass::As_Reference(STRUCT_EYE);
+			if (Can_Build(b, ActLike) && (b->Cost_Of() < money || hasincome) && ActLike == HOUSE_GOOD) {
+				choiceptr = BuildChoice.Alloc();
+				if (choiceptr != NULL) {
+					*choiceptr = BuildChoiceClass(URGENCY_LOW, b->Type);
+				}
+			}
+		}
+
+		// Build Advanced Structures for launchers
+		if (BQuantity[STRUCT_TEMPLE] == 0) {
+			b = &BuildingTypeClass::As_Reference(STRUCT_TEMPLE);
+			if (Can_Build(b, ActLike) && (b->Cost_Of() < money || hasincome) && ActLike == HOUSE_BAD) {
+				choiceptr = BuildChoice.Alloc();
+				if (choiceptr != NULL) {
+					*choiceptr = BuildChoiceClass(URGENCY_LOW, b->Type);
 				}
 			}
 		}
