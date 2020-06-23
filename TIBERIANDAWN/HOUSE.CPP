@@ -1223,6 +1223,7 @@ void HouseClass::AI(void)
 			unit->Mark(MARK_CHANGE);
 		} else {
 			CELL cell = As_Cell(FlagLocation);
+			Map[cell].Flag_Update();
 			Map[cell].Redraw_Objects();
 		}
 	}
@@ -1667,7 +1668,11 @@ void HouseClass::Attacked(BuildingClass* source)
 	Validate();
 	if (SpeakAttackDelay.Expired() && PlayerPtr->Class->House == Class->House) {
 		Speak(VOX_BASE_UNDER_ATTACK, NULL, source ? source->Center_Coord() : 0);
-		SpeakAttackDelay.Set(Options.Normalize_Delay(SPEAK_DELAY));
+
+		// MBL 06.13.2020 - Timing change from 2 minute cooldown, per https://jaas.ea.com/browse/TDRA-6784
+		// SpeakAttackDelay.Set(Options.Normalize_Delay(SPEAK_DELAY)); // 2 minutes
+		// SpeakAttackDelay.Set(Options.Normalize_Delay(TICKS_PER_MINUTE/2)); // 30 seconds as requested
+		SpeakAttackDelay.Set(Options.Normalize_Delay( (TICKS_PER_MINUTE/2)+(TICKS_PER_SECOND*5) )); // Tweaked for accuracy
 
 		/*
 		**	If there is a trigger event associated with being attacked, process it
@@ -2672,7 +2677,7 @@ bool HouseClass::Place_Special_Blast(SpecialWeaponType id, CELL cell)
 		case SPC_ION_CANNON:
 			if (IonCannon.Is_Ready()) {
 				anim = new AnimClass(ANIM_ION_CANNON, Cell_Coord(cell));
-				if (anim) anim->Owner = Class->House;
+				if (anim) anim->OwnerHouse = Class->House;
 				if (this == PlayerPtr) {
 					Map.IsTargettingMode = false;
 				}
@@ -4073,7 +4078,6 @@ void HouseClass::MPlayer_Defeated(void)
 	------------------------------------------------------------------------*/
 	if (PlayerPtr == this) {
 		MPlayerObiWan = 1;
-		Debug_Unshroud = true;
 		HiddenPage.Clear();
 		Map.Flag_To_Redraw(true);
 
@@ -4331,11 +4335,6 @@ void HouseClass::MPlayer_Defeated(void)
 			MPlayerCount = 0;
 		}
 	}
-
-	/*------------------------------------------------------------------------
-	Be sure our messages get displayed, even if we're about to exit.
-	------------------------------------------------------------------------*/
-	Map.Render();
 }
 
 
@@ -4756,10 +4755,14 @@ void HouseClass::Sell_Wall(CELL cell)
 					Map[cell].OverlayData = 0;
 					Map[cell].Owner = HOUSE_NONE;
 					Map[cell].Wall_Update();
-					Map[cell].Adjacent_Cell(FACING_N).Wall_Update();
-					Map[cell].Adjacent_Cell(FACING_W).Wall_Update();
-					Map[cell].Adjacent_Cell(FACING_S).Wall_Update();
-					Map[cell].Adjacent_Cell(FACING_E).Wall_Update();
+					CellClass * ncell = Map[cell].Adjacent_Cell(FACING_N);
+					if (ncell) ncell->Wall_Update();
+					CellClass * wcell = Map[cell].Adjacent_Cell(FACING_W);
+					if (wcell) wcell->Wall_Update();
+					CellClass * scell = Map[cell].Adjacent_Cell(FACING_S);
+					if (scell) scell->Wall_Update();
+					CellClass * ecell = Map[cell].Adjacent_Cell(FACING_E);
+					if (ecell) ecell->Wall_Update();
 					Map[cell].Recalc_Attributes();
 					Map[cell].Redraw_Objects();
 					ObjectClass::Detach_This_From_All(::As_Target(cell), true);
@@ -5825,9 +5828,13 @@ UrgencyType HouseClass::Check_Raise_Money(void) const
 UrgencyType HouseClass::Check_Lower_Power(void) const
 {
 	//assert(Houses.ID(this) == ID);
+	bool hasincome = (BQuantity[STRUCT_REFINERY] > 0 && !IsTiberiumShort && UQuantity[UNIT_HARVESTER] > 0);
 
-	if (Power > Drain+600) {
-		return(URGENCY_LOW);
+	if (!hasincome)
+	{
+		if (Power > Drain + 600) {
+			return(URGENCY_LOW);
+		}
 	}
 	return(URGENCY_NONE);
 }
@@ -6323,14 +6330,14 @@ int HouseClass::AI_Building(void)
 		if (Can_Build(b, ActLike) && Power < Drain+Rule.PowerSurplus && (b->Cost_Of() < money) || hasincome) {
 			choiceptr = BuildChoice.Alloc();
 			if (choiceptr != NULL) {
-				*choiceptr = BuildChoiceClass(BQuantity[STRUCT_REFINERY] == 0 ? URGENCY_LOW : Power < -Drain ? URGENCY_CRITICAL : URGENCY_MEDIUM, b->Type);
+				*choiceptr = BuildChoiceClass(BQuantity[STRUCT_REFINERY] == 0 ? URGENCY_LOW : Power < abs(Drain) ? URGENCY_CRITICAL : URGENCY_MEDIUM, b->Type);
 			}
 		} else {
 			b = &BuildingTypeClass::As_Reference(STRUCT_POWER);
 			if (Can_Build(b, ActLike) && Power < Drain+Rule.PowerSurplus && (b->Cost_Of() < money) || hasincome) {
 				choiceptr = BuildChoice.Alloc();
 				if (choiceptr != NULL) {
-					*choiceptr = BuildChoiceClass(BQuantity[STRUCT_REFINERY] == 0 ? URGENCY_LOW : Power < -Drain  ? URGENCY_HIGH : URGENCY_MEDIUM, b->Type);
+					*choiceptr = BuildChoiceClass(BQuantity[STRUCT_REFINERY] == 0 ? URGENCY_LOW : Power < abs(Drain)  ? URGENCY_HIGH : URGENCY_MEDIUM, b->Type);
 				}
 			}
 		}
@@ -6421,7 +6428,7 @@ int HouseClass::AI_Building(void)
 			if (Can_Build(b, ActLike) && (b->Cost_Of() < money || hasincome)) {
 				choiceptr = BuildChoice.Alloc();
 				if (choiceptr != NULL) {
-					*choiceptr = BuildChoiceClass(current > 0 ? URGENCY_LOW : URGENCY_HIGH, b->Type);
+					*choiceptr = BuildChoiceClass(current > 1 ? URGENCY_LOW : current > 0 ? URGENCY_MEDIUM : URGENCY_HIGH, b->Type);
 				}
 			}
 		}
@@ -6436,7 +6443,7 @@ int HouseClass::AI_Building(void)
 			if (Can_Build(b, ActLike) && (b->Cost_Of() < money || hasincome)) {
 				choiceptr = BuildChoice.Alloc();
 				if (choiceptr != NULL) {
-					*choiceptr = BuildChoiceClass(current > 0 ? URGENCY_LOW : URGENCY_HIGH, b->Type);
+					*choiceptr = BuildChoiceClass(current > 1 ? URGENCY_LOW : current > 0 ? URGENCY_MEDIUM : URGENCY_HIGH, b->Type);
 				}
 			}
 		}
