@@ -1159,14 +1159,32 @@ void BuildingClass::AI(void)
 		**	Possibly start repair process if the building is below half strength.
 		*/
 		int ratio = 0x0040;
+		
 		if (Scenario > 6) ratio = 0x0080;
 		if (Scenario > 10) ratio = 0x00C0;
+		if (*this == STRUCT_OBELISK || *this == STRUCT_ATOWER || *this == STRUCT_GTOWER || *this == STRUCT_TURRET) {
+			ratio = 0x00C0;
+		}
+
+
 		if (Class->IsRepairable && Health_Ratio() <= (unsigned) ratio) {
 			if (House->Available_Money() >= REPAIR_THRESHHOLD) {
 				Repair(1);
 			} else {
-				if (IsTickedOff && (int)Scenario > 2 && Random_Pick(0, 50) < (int)Scenario && !Trigger) {
-					Sell_Back(1);
+				if (Class->IsRepairable && House->Available_Money() >= 100) {
+					Repair(1);
+				}
+				if (Class->IsRepairable && Health_Ratio() <= (unsigned)0x0014) {
+					if (IsTickedOff && (int)Scenario > 2 && Random_Pick(0, 50) < (int)Scenario && !Trigger) {
+						if (*this != STRUCT_CONST) {
+							Sell_Back(1);
+						}
+					}
+				}
+				else if (IsTickedOff && (int)Scenario > 2 && Random_Pick(0, 50) < (int)Scenario && !Trigger && !(House->Can_Make_Money())) {
+					if (*this != STRUCT_CONST) {
+						Sell_Back(1);
+					}		
 				}
 			}
 		}

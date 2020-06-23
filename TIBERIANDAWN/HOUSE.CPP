@@ -5828,9 +5828,13 @@ UrgencyType HouseClass::Check_Raise_Money(void) const
 UrgencyType HouseClass::Check_Lower_Power(void) const
 {
 	//assert(Houses.ID(this) == ID);
+	bool hasincome = (BQuantity[STRUCT_REFINERY] > 0 && !IsTiberiumShort && UQuantity[UNIT_HARVESTER] > 0);
 
-	if (Power > Drain+600) {
-		return(URGENCY_LOW);
+	if (!hasincome)
+	{
+		if (Power > Drain + 600) {
+			return(URGENCY_LOW);
+		}
 	}
 	return(URGENCY_NONE);
 }
@@ -6326,14 +6330,14 @@ int HouseClass::AI_Building(void)
 		if (Can_Build(b, ActLike) && Power < Drain+Rule.PowerSurplus && (b->Cost_Of() < money) || hasincome) {
 			choiceptr = BuildChoice.Alloc();
 			if (choiceptr != NULL) {
-				*choiceptr = BuildChoiceClass(BQuantity[STRUCT_REFINERY] == 0 ? URGENCY_LOW : Power < -Drain ? URGENCY_CRITICAL : URGENCY_MEDIUM, b->Type);
+				*choiceptr = BuildChoiceClass(BQuantity[STRUCT_REFINERY] == 0 ? URGENCY_LOW : Power < abs(Drain) ? URGENCY_CRITICAL : URGENCY_MEDIUM, b->Type);
 			}
 		} else {
 			b = &BuildingTypeClass::As_Reference(STRUCT_POWER);
 			if (Can_Build(b, ActLike) && Power < Drain+Rule.PowerSurplus && (b->Cost_Of() < money) || hasincome) {
 				choiceptr = BuildChoice.Alloc();
 				if (choiceptr != NULL) {
-					*choiceptr = BuildChoiceClass(BQuantity[STRUCT_REFINERY] == 0 ? URGENCY_LOW : Power < -Drain  ? URGENCY_HIGH : URGENCY_MEDIUM, b->Type);
+					*choiceptr = BuildChoiceClass(BQuantity[STRUCT_REFINERY] == 0 ? URGENCY_LOW : Power < abs(Drain)  ? URGENCY_HIGH : URGENCY_MEDIUM, b->Type);
 				}
 			}
 		}
@@ -6424,7 +6428,7 @@ int HouseClass::AI_Building(void)
 			if (Can_Build(b, ActLike) && (b->Cost_Of() < money || hasincome)) {
 				choiceptr = BuildChoice.Alloc();
 				if (choiceptr != NULL) {
-					*choiceptr = BuildChoiceClass(current > 0 ? URGENCY_LOW : URGENCY_HIGH, b->Type);
+					*choiceptr = BuildChoiceClass(current > 1 ? URGENCY_LOW : current > 0 ? URGENCY_MEDIUM : URGENCY_HIGH, b->Type);
 				}
 			}
 		}
@@ -6439,7 +6443,7 @@ int HouseClass::AI_Building(void)
 			if (Can_Build(b, ActLike) && (b->Cost_Of() < money || hasincome)) {
 				choiceptr = BuildChoice.Alloc();
 				if (choiceptr != NULL) {
-					*choiceptr = BuildChoiceClass(current > 0 ? URGENCY_LOW : URGENCY_HIGH, b->Type);
+					*choiceptr = BuildChoiceClass(current > 1 ? URGENCY_LOW : current > 0 ? URGENCY_MEDIUM : URGENCY_HIGH, b->Type);
 				}
 			}
 		}
