@@ -7933,7 +7933,7 @@ CELL HouseClass::Where_To_Go(FootClass const * object) const
 	if (object->Anti_Air() + object->Anti_Armor() + object->Anti_Infantry() == 0) {
 		zone = ZONE_CORE;
 	} else {
-		zone = Random_Pick(ZONE_NORTH, ZONE_WEST);
+		zone = Random_Pick(Random_Pick(ZONE_NORTH, ZONE_SOUTH), Random_Pick(ZONE_WEST, ZONE_EAST));
 	}
 
 	CELL cell = Random_Cell_In_Zone(zone);
